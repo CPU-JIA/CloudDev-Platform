@@ -1,0 +1,242 @@
+spring:
+  application:
+    name: auth-service
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  
+  # 数据库配置
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/clouddev_auth}
+    username: ${DATABASE_USERNAME:clouddev}
+    password: ${DATABASE_PASSWORD:clouddev123}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      connection-timeout: 20000
+      maximum-pool-size: 10
+      minimum-idle: 5
+      idle-timeout: 300000
+      max-lifetime: 1200000
+  
+  # JPA配置
+  jpa:
+    hibernate:
+      ddl-auto: ${DDL_AUTO:update}
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        use_sql_comments: true
+        jdbc:
+          batch_size: 20
+        order_inserts: true
+        order_updates: true
+  
+  # Redis配置
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DATABASE:0}
+      timeout: 5000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+          max-wait: -1ms
+  
+  # 邮件配置
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+  # OAuth2配置
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID:}
+            client-secret: ${GOOGLE_CLIENT_SECRET:}
+            scope:
+              - openid
+              - profile
+              - email
+          github:
+            client-id: ${GITHUB_CLIENT_ID:}
+            client-secret: ${GITHUB_CLIENT_SECRET:}
+            scope:
+              - user:email
+              - read:user
+          gitlab:
+            client-id: ${GITLAB_CLIENT_ID:}
+            client-secret: ${GITLAB_CLIENT_SECRET:}
+            scope:
+              - read_user
+            authorization-grant-type: authorization_code
+            redirect-uri: "{baseUrl}/oauth2/callback/{registrationId}"
+        provider:
+          gitlab:
+            authorization-uri: https://gitlab.com/oauth/authorize
+            token-uri: https://gitlab.com/oauth/token
+            user-info-uri: https://gitlab.com/api/v4/user
+            user-name-attribute: username
+
+# 服务器配置
+server:
+  port: ${SERVER_PORT:8081}
+  servlet:
+    context-path: /api/auth
+  compression:
+    enabled: true
+    mime-types: text/html,text/xml,text/plain,text/css,text/javascript,application/javascript,application/json
+    min-response-size: 1024
+
+# 管理端点配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when_authorized
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+# 应用配置
+app:
+  jwt:
+    secret: ${JWT_SECRET:clouddev-jwt-secret-key-for-development-only-change-in-production}
+    expiration: ${JWT_EXPIRATION:86400000} # 24 hours
+    refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000} # 7 days
+  
+  security:
+    password:
+      min-length: 8
+      max-length: 100
+      require-uppercase: true
+      require-lowercase: true
+      require-digit: true
+      require-special-char: false
+    
+    rate-limiting:
+      login-attempts: 5
+      lockout-duration: 900000 # 15 minutes
+    
+    session:
+      max-sessions: 5
+      timeout: 3600000 # 1 hour
+  
+  verification:
+    email:
+      expiration: 86400000 # 24 hours
+    password-reset:
+      expiration: 3600000 # 1 hour
+  
+  oauth2:
+    success-redirect-url: ${OAUTH2_SUCCESS_REDIRECT:http://localhost:3000/oauth2/redirect}
+    failure-redirect-url: ${OAUTH2_FAILURE_REDIRECT:http://localhost:3000/login?error=oauth2_error}
+
+# 日志配置
+logging:
+  level:
+    com.clouddev.auth: ${LOG_LEVEL:DEBUG}
+    org.springframework.security: ${SECURITY_LOG_LEVEL:DEBUG}
+    org.springframework.web: ${WEB_LOG_LEVEL:INFO}
+    org.hibernate.SQL: ${SQL_LOG_LEVEL:DEBUG}
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level [%logger{36}] - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level [%logger{36}] - %msg%n"
+
+# OpenAPI文档配置
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    disable-swagger-default-url: true
+  info:
+    title: CloudDev Auth Service API
+    description: CloudDev Platform Authentication Service API Documentation
+    version: 1.0.0
+    contact:
+      name: CloudDev Team
+      email: support@clouddev.com
+    license:
+      name: MIT License
+      url: https://opensource.org/licenses/MIT
+
+---
+# Development环境配置
+spring:
+  config:
+    activate:
+      on-profile: dev
+  
+  datasource:
+    url: jdbc:postgresql://localhost:5432/clouddev_auth_dev
+  
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+
+logging:
+  level:
+    root: INFO
+    com.clouddev.auth: DEBUG
+    org.springframework.security: DEBUG
+
+---
+# Test环境配置
+spring:
+  config:
+    activate:
+      on-profile: test
+  
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: 
+  
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+  
+  h2:
+    console:
+      enabled: true
+
+---
+# Production环境配置
+spring:
+  config:
+    activate:
+      on-profile: prod
+  
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+
+logging:
+  level:
+    root: WARN
+    com.clouddev.auth: INFO
+  file:
+    name: /var/log/clouddev/auth-service.log
